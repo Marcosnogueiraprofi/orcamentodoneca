@@ -32,37 +32,49 @@ if st.button("Gerar PDF do Orçamento"):
         st.warning("Por favor, preencha todos os campos.")
     else:
         buffer = BytesIO()
-        pdf = canvas.Canvas(buffer, pagesize=letter)
-        numero_orcamento = get_proximo_numero()
+      # ---- Configuração do PDF (AGORA COM LAYOUT PROFISSIONAL) ---- #
+pdf = canvas.Canvas(buffer, pagesize=letter)
 
-        # --- CABEÇALHO ---
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(50, 750, "Resolve Prestadora de Serviços")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(50, 730, "CNPJ: 52.823.975/0001-13")
+# ---- CABEÇALHO ---- #
+pdf.setFont("Helvetica-Bold", 16)
+pdf.drawCentredString(300, 750, "Resolve Prestadora de Serviços")  # Título centralizado
+pdf.setFont("Helvetica", 12)
+pdf.drawCentredString(300, 730, "CNPJ: 52.823.975/0001-13")  # CNPJ centralizado
 
-        # --- TÍTULO DO ORÇAMENTO ---
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawCentredString(300, 700, f"ORÇAMENTO Nº {numero_orcamento}")
+# ---- NÚMERO DO ORÇAMENTO ---- #
+pdf.setFont("Helvetica-Bold", 14)
+pdf.drawCentredString(300, 690, f"ORÇAMENTO Nº {numero_orcamento}")  # Nº centralizado
 
-        # --- CLIENTE ---
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 650, f"À {cliente}")
+# ---- INFOS DO CLIENTE ---- #
+pdf.setFont("Helvetica-Bold", 12)
+pdf.drawString(50, 650, f"À {cliente}")  # Nome do cliente
 
-        # --- DESCRIÇÃO ---
-        pdf.drawString(50, 620, "Descrição dos Serviços")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(50, 600, descricao)
+# ---- SERVIÇOS ---- #
+pdf.setFont("Helvetica-Bold", 12)
+pdf.drawString(50, 620, "Descrição dos Serviços:")
+pdf.setFont("Helvetica", 12)
+# Quebra a descrição em linhas (pra não ultrapassar a página)
+linhas_descricao = [descricao[i:i+80] for i in range(0, len(descricao), 80)]
+y = 600
+for linha in linhas_descricao:
+    pdf.drawString(50, y, linha)
+    y -= 20  # Espaçamento entre linhas
 
-        # --- VALOR ---
-        pdf.drawString(50, 550, f"Valor da mão de obra e material: R$ {valor}")
+# ---- VALOR ---- #
+pdf.setFont("Helvetica", 12)
+pdf.drawString(50, 500, f"Valor da mão de obra e material: R$ {valor}")
 
-        # --- TOTAL ---
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(50, 500, "TOTAL:")
-        pdf.drawString(120, 500, f"R$ {valor}")
+# ---- TOTAL (DESTAQUE) ---- #
+pdf.setFont("Helvetica-Bold", 14)
+pdf.drawString(50, 450, "TOTAL:")
+pdf.drawString(120, 450, f"R$ {valor}")
 
-        pdf.save()
+# ---- RODAPÉ ---- #
+pdf.setFont("Helvetica", 10)
+pdf.drawString(50, 50, f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}")  # Data e hora
+pdf.drawString(50, 30, "Resolve Prestadora de Serviços - Orçamento válido por 7 dias")
+
+pdf.save()
         buffer.seek(0)
 
         # Gera o nome do arquivo com data/hora
