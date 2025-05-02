@@ -1,51 +1,40 @@
 import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
 from io import BytesIO
-import os
+import base64
 
-def criar_pdf(cliente, responsavel, endereco, descricao, valor, obs):
-    # Criar buffer e PDF
+def create_pdf():
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     
-    # --- CONTEÚDO DO PDF (igual ao seu modelo) ---
+    # --- CONTEÚDO DO PDF (modelo profissional) ---
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(30*mm, 280*mm, f"ORÇAMENTO Nº 201")  # Número fixo para teste
+    c.drawString(50, 800, "ORÇAMENTO Nº 201")
     
     c.setFont("Helvetica", 12)
-    c.drawString(30*mm, 270*mm, f"À {cliente}")
-    c.drawString(30*mm, 260*mm, f"A/C {responsavel}")
-    c.drawString(30*mm, 250*mm, f"Imóvel: {endereco}")
+    c.drawString(50, 780, "À Casarão Imóveis")
+    c.drawString(50, 760, "A/C Sérgio Antônio")
+    c.drawString(50, 740, "Imóvel: General Neto nº 446 - Rio Grande/RS")
     
-    # ... (adicione o resto do conteúdo conforme seu modelo exato)
-
-    # --- FECHAMENTO CORRETO ---
-    c.showPage()
+    c.drawString(50, 700, "Descrição dos Serviços")
+    c.drawString(50, 680, "Pintura geral interna e externa.")
+    
+    # ... (complete com o resto do conteúdo)
+    
     c.save()
-    
-    # Pré-carregar os bytes antes de fechar
     pdf_bytes = buffer.getvalue()
     buffer.close()
-    
     return pdf_bytes
 
 # Interface
-cliente = st.text_input("Cliente")
-responsavel = st.text_input("A/C")
-endereco = st.text_input("Imóvel")
-descricao = st.text_area("Descrição")
-valor = st.text_input("Valor")
-obs = st.text_input("Obs")
+st.title("Gerador de Orçamentos")
 
 if st.button("Gerar PDF"):
-    pdf_bytes = criar_pdf(cliente, responsavel, endereco, descricao, valor, obs)
+    pdf_bytes = create_pdf()
     
-    # Download com os bytes pré-carregados
-    st.download_button(
-        label="⬇️ Baixar Orçamento",
-        data=pdf_bytes,
-        file_name="ORÇAMENTO_RESOLVE.pdf",
-        mime="application/pdf"
-    )
+    # Codificação direta para download
+    b64 = base64.b64encode(pdf_bytes).decode()
+    href = f'<a href="data:application/pdf;base64,{b64}" download="ORÇAMENTO_RESOLVE.pdf">Clique para baixar</a>'
+    st.markdown(href, unsafe_allow_html=True)
+    st.success("PDF gerado com sucesso!")
