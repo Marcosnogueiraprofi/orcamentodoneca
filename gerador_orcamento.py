@@ -7,64 +7,87 @@ from datetime import datetime
 from io import BytesIO
 import os
 
-# [...] (Parte do Streamlit igual anteriormente)
-
-if st.button("Gerar PDF do Orçamento"):
-    if not cliente or not descricao or not valor:
-        st.warning("Preencha todos os campos!")
+def get_proximo_numero():
+    arquivo_contador = "ultimo_orcamento.txt"
+    if os.path.exists(arquivo_contador):
+        with open(arquivo_contador, "r") as file:
+            ultimo_numero = int(file.read())
     else:
+        ultimo_numero = 200  # Começando do 201 como no exemplo
+    proximo_numero = ultimo_numero + 1
+    with open(arquivo_contador, "w") as file:
+        file.write(str(proximo_numero))
+    return proximo_numero
+
+# Interface Streamlit
+st.set_page_config(page_title="Orçamento Resolve", page_icon="🧾")
+st.title("🧾 Gerador de Orçamentos Profissional")
+
+with st.form("form_orcamento"):
+    cliente = st.text_input("Cliente")
+    responsavel = st.text_input("A/C")
+    endereco = st.text_input("Imóvel")
+    descricao = st.text_area("Descrição dos Serviços")
+    valor = st.text_input("Valor Total (ex: 26.000,00)")
+    observacoes = st.text_input("Observações")
+    
+    if st.form_submit_button("Gerar PDF"):
         buffer = BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
         width, height = A4
-        
-        # --- CONFIG GLOBAL ---
         margin = 20*mm
-        c.setStrokeColor(colors.black)
-        c.setLineWidth(0.5)
         
-        # --- CABEÇALHO ---
+        # Configurações
+        c.setTitle(f"Orçamento Resolve - {datetime.now().strftime('%Y%m%d')}")
+        
+        # Cabeçalho
         c.setFont("Helvetica-Bold", 16)
-        c.drawCentredString(width/2, height-margin, "RESOLVE PRESTADORA DE SERVIÇOS")
-        c.setFont("Helvetica", 10)
-        c.drawCentredString(width/2, height-margin-8, "CNPJ: 52.823.975/0001-13")
+        c.drawCentredString(width/2, height-margin, "ORÇAMENTO Nº {}".format(get_proximo_numero()))
         
-        # Linha divisória
-        c.line(margin, height-margin-15, width-margin, height-margin-15)
+        # Informações do Cliente
+        c.setFont("Helvetica", 12)
+        c.drawString(margin, height-margin-20, f"À {cliente}")
+        c.drawString(margin, height-margin-35, f"A/C {responsavel}")
+        c.drawString(margin, height-margin-50, f"Imóvel: {endereco}")
         
-        # --- NÚMERO ORÇAMENTO ---
-        c.setFont("Helvetica-Bold", 14)
-        c.drawCentredString(width/2, height-margin-30, f"ORÇAMENTO Nº {get_proximo_numero()}")
+        # Divisória
+        c.line(margin, height-margin-60, width-margin, height-margin-60)
         
-        # --- CLIENTE ---
+        # Descrição dos Serviços
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(margin, height-margin-50, f"Cliente: {cliente}")
-        
-        # --- SERVIÇOS ---
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(margin, height-margin-70, "DESCRIÇÃO DOS SERVIÇOS:")
+        c.drawString(margin, height-margin-80, "Descrição dos Serviços")
         c.setFont("Helvetica", 11)
-        text = c.beginText(margin, height-margin-85)
+        
+        text = c.beginText(margin, height-margin-95)
         text.setFont("Helvetica", 11)
         for line in descricao.split('\n'):
             text.textLine(line)
         c.drawText(text)
         
-        # --- VALOR ---
-        c.setFont("Helvetica-Bold", 12)
-        c.drawRightString(width-margin, height-margin-120, f"Valor: R$ {valor}")
+        # Valor
+        c.setFont("Helvetica", 11)
+        c.drawString(margin, height-margin-200, f"Valor da mão de obra e material = R$ {valor}")
         
-        # --- TOTAL ---
+        # Observações
+        if observacoes:
+            c.drawString(margin, height-margin-215, f"Obs: {observacoes}")
+        
+        # Total
         c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.darkblue)
-        c.drawRightString(width-margin, height-margin-140, f"TOTAL: R$ {valor}")
-        c.setFillColor(colors.black)
+        c.drawString(margin, height-margin-240, "TOTAL:")
+        c.drawString(margin+100, height-margin-240, f"R${valor}")
         
-        # --- RODAPÉ ---
-        c.line(margin, 25*mm, width-margin, 25*mm)
+        # Rodapé
         c.setFont("Helvetica", 8)
-        c.drawString(margin, 20*mm, f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-        c.drawString(margin, 15*mm, "Resolve Prestadora de Serviços | Orçamento válido por 7 dias")
+        c.drawString(margin, 15*mm, "Resolve Prestadora de Serviços | CNPJ: 52.823.975/0001-13")
         
         c.save()
         buffer.seek(0)
-        # [...] (Parte do download igual)
+        
+        st.success("Orçamento gerado com sucesso!")
+        st.download_button(
+            "📥 Baixar Orçamento",
+            buffer,
+            file_name=f"Orçamento_Resolve_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf"
+        )
