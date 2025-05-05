@@ -1,4 +1,38 @@
 import streamlit as st
+import streamlit as st
+# ... seus outros imports ...
+
+# --- CSS Personalizado ---
+st.markdown("""
+<style>
+/* Aqui você pode adicionar suas regras CSS */
+
+/* Exemplo: Mudar a cor de fundo da página principal do Streamlit */
+.main {
+    background-color: #f0f2f6; /* Um cinza claro */
+    padding: 20px; /* Adicionar um espaçamento interno */
+}
+
+/* Exemplo: Mudar a cor do título h1 (se você usar um st.title ou st.header) */
+h1 {
+    color: #1e3a8a; /* Um tom de azul mais escuro */
+}
+
+/* Exemplo: Estilizar os inputs de texto */
+div[data-testid="textInputRootStyles"] {
+    background-color: white;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+/* Adicione mais estilos conforme necessário */
+
+</style>
+""", unsafe_allow_html=True)
+
+# --- Resto do seu código Streamlit ---
+# ... (seus st.text_input, st.button, etc.) ...
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
