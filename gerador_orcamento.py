@@ -161,4 +161,127 @@ def criar_pdf(numero, data, cliente, responsavel, endereco, descricao, valor, ob
     # --- Seção de Descrição ---
     c.setFillColor(AZUL_MARINHO_PDF) # Cor azul marinho para o título da descrição
     c.setFont("Helvetica-Bold", 14) # Título em negrito
-    c.drawCentredString(A4[0]/2, Y_TITULO_DESCRICAO*mm, "Descrição dos
+    c.drawCentredString(A4[0]/2, Y_TITULO_DESCRICAO*mm, "Descrição dos Serviços")
+
+
+    c.setFillColor(PRETO_PDF) # Cor preta para o texto da descrição
+    c.setFont("Helvetica", 12) # Fonte normal
+    # --- ATENÇÃO: Lidar com texto longo/quebra de linha automaticamente é complexo com canvas! ---
+    # O código abaixo desenha cada linha do text_area separadamente.
+    # Se o texto não tiver quebras de linha manuais no text_area mas for muito longo, ele vai ultrapassar a borda.
+    # Se precisar quebra automática real, pesquise sobre 'ReportLab Flowables' (Paragraph).
+    altura_texto_desc = Y_TEXTO_DESCRICAO_INICIO # Posição Y inicial para o texto da descrição
+    linhas_desc = descricao.split('\n') # Quebra o texto do text_area em linhas
+
+    for linha in linhas_desc:
+         # Ajusta o espaçamento entre linhas. 5mm é um exemplo, ajuste se parecer muito junto/separado.
+         c.drawString(30*mm, altura_texto_desc*mm, linha) # Desenha a linha alinhada à esquerda
+         altura_texto_desc -= 5
+
+
+    # --- Rodapé no PDF ---
+    c.setFillColor(PRETO_PDF) # Cor preta para o rodapé
+    c.setFont("Helvetica", 9) # Fonte pequena
+
+    # Desenha as linhas do rodapé alinhadas à esquerda
+    c.drawString(30*mm, Y_RODAPE*mm + 5*mm, "Resolve Prestadora de Serviços") # Exemplo de posição
+    c.drawString(30*mm, Y_RODAPE*mm, "CNPJ: 52.823.975/0001-13") # Exemplo de posição
+
+    # Se quiser centralizado no rodapé:
+    # c.drawCentredString(A4[0]/2, Y_RODAPE*mm + 5*mm, "Resolve Prestadora de Serviços")
+    # c.drawCentredString(A4[0]/2, Y_RODAPE*mm, "CNPJ: 52.823.975/0001-13")
+
+
+    # --- FECHAMENTO ---
+    c.showPage() # Finaliza a página atual
+    c.save() # Salva o conteúdo desenhado no buffer
+
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
+    return pdf_bytes
+
+# --- INTERFACE STREAMLIT ---
+# Título principal do aplicativo Streamlit
+st.title("Gerador de Orçamento - Resolve Vistorias")
+
+# --- SUA MENSAGEM PERSONALIZADA AQUI ---
+# Colocada após o título principal, antes dos campos
+st.write("FAÇA AQUI O TEU ORÇAMENTO, NECA!!! ;)") # Ou use st.markdown("## Sua Mensagem") para um título menor
+
+
+# Exemplo de layout com colunas para organizar campos na interface
+col1, col2 = st.columns(2)
+
+# Campos na primeira coluna
+with col1:
+    cliente = st.text_input("Cliente")
+    # Alterado para um campo de texto simples conforme o exemplo do PDF
+    # responsavel = st.text_input("A/C")
+    responsavel = st.text_input("Responsável (A/C)")
+
+
+# Campos na segunda coluna
+with col2:
+     # Alterado para um campo de texto simples conforme o exemplo do PDF
+     # endereco = st.text_input("Imóvel") # Era 'Imóvel'
+     endereco = st.text_input("Local/Condomínio") # Mudei o rótulo para refletir o uso no PDF
+     # Campo de data
+     st.session_state.data_orcamento = st.date_input("Data do Orçamento", value=st.session_state.data_orcamento)
+
+
+# Campos que ocupam a largura total
+# A descrição agora é um único campo grande que pode incluir Cliente, A/C, Local e a descrição detalhada no PDF
+# Mas mantive os campos separados no Streamlit para facilitar a entrada de dados estruturados
+# e montei o texto no PDF com base nos inputs separados, como você descreveu no exemplo.
+descricao = st.text_area("Descrição Detalhada dos Serviços")
+valor = st.text_input("Valor Total do Orçamento")
+# removi o campo 'obs' do Streamlit interface para simplificar e focar no modelo descrito.
+# Se precisar dele de volta, é só descomentar e adicionar a lógica no PDF.
+# obs = st.text_input("Obs")
+
+
+# Botão para gerar o PDF
+if st.button("Gerar PDF"):
+    # Verificar se os campos principais estão preenchidos antes de gerar
+    # Ajustei a verificação para os campos que estão na interface agora
+    if cliente and endereco and responsavel and descricao and valor:
+        # Chama a função para criar o PDF, passando os dados, incluindo o número e a data
+        # Passei os inputs individuais (cliente, endereco, responsavel) para a função criar_pdf
+        # para desenhá-los antes da Descrição Detalhada no PDF, como no seu exemplo.
+        pdf_bytes = criar_pdf(st.session_state.numero_orcamento,
+                              st.session_state.data_orcamento,
+                              cliente,
+                              responsavel,
+                              endereco, # Este é o Local/Condomínio agora
+                              descricao,
+                              valor,
+                              "") # Passei uma string vazia para 'obs' já que removemos o input por enquanto
+
+        # Botão de download para o PDF gerado
+        st.download_button(
+            label="⬇️ Baixar Orçamento",
+            data=pdf_bytes,
+            # Nome do arquivo inclui o número e a data do orçamento para facilitar a organização
+            file_name=f"ORCAMENTO_RESOLVE_N{st.session_state.numero_orcamento}_{st.session_state.data_orcamento.strftime('%Y%m%d')}.pdf",
+            mime="application/pdf"
+        )
+
+        # Mensagem de sucesso e feedback para o usuário
+        st.success(f"Orçamento Nº {st.session_state.numero_orcamento} gerado! Clique no botão para baixar.")
+
+        # *** IMPORTANTE: Incrementa o número APÓS a geração bem-sucedida ***
+        # Isso garante que o próximo orçamento terá um número diferente
+        st.session_state.numero_orcamento += 1
+
+        # Opcional: Limpar os campos de input após gerar o PDF
+        # Para fazer isso, você precisaria armazenar os valores dos inputs no session_state também.
+        # Exemplo:
+        # st.session_state.cliente = ""
+        # st.experimental_rerun() # Força o Streamlit a recarregar e limpar
+
+    else:
+        # Mensagem de aviso se campos obrigatórios não forem preenchidos
+        st.warning("Por favor, preencha todos os campos obrigatórios (Cliente, Local/Condomínio, Responsável, Descrição e Valor).")
+
+# Fim do script
