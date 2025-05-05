@@ -4,10 +4,11 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle # Para estilos de texto
 from reportlab.lib.units import mm # Para usar milímetros nas medidas
 from reportlab.lib.colors import HexColor, black, blue # Para cores
-from reportlab.lib.pagesizes import A4 # Para o tamanho da página A4
+from reportlab.lib.pagesizes import A4 # Para o tamanho da página A4 (CORRIGIDO: Importado novamente)
 from io import BytesIO
 from datetime import date # Para usar a data
 # Removido import de pdfmetrics e ttfonts
+
 
 # --- INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
 # Inicializa o número do orçamento, a data e as informações de contato
@@ -25,6 +26,7 @@ if 'contato_site' not in st.session_state:
 
 
 # --- CÓDIGO CSS PARA LAYOUT AZUL E BRANCO ELEGANTE NO STREAMLIT ---
+# Este bloco injeta CSS na página do Streamlit para estilizar a interface
 # Mantenha este bloco igual ao que funcionou para você
 st.markdown("""
 <style>
@@ -197,10 +199,12 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
         canvas.setFillColor(AZUL_ESCURO_PDF)
         canvas.setFont('Helvetica-Bold', 20) # Fonte padrão negrito e tamanho
         # Desenha o texto centralizado na largura da página, na altura Y (do topo para baixo)
-        canvas.drawCentredString(A4[0]/2, A4[1] - 25*mm, "Orçamento Resolve Prestadora de Serviço") # Posição no topo
+        # CORRIGIDO: Acessando largura e altura via doc.pagesize
+        canvas.drawCentredString(doc.pagesize[0]/2, doc.pagesize[1] - 25*mm, "Orçamento Resolve Prestadora de Serviço")
 
         canvas.setFont('Helvetica', 12) # Fonte padrão normal e tamanho
-        canvas.drawCentredString(A4[0]/2, A4[1] - 30*mm, "RESOLVE VISTORIAS") # Nome da empresa abaixo
+         # CORRIGIDO: Acessando largura e altura via doc.pagesize
+        canvas.drawCentredString(doc.pagesize[0]/2, doc.pagesize[1] - 30*mm, "RESOLVE VISTORIAS") # Nome da empresa abaixo
 
 
         # --- Desenhar Rodapé Fixo ---
@@ -212,10 +216,11 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
 
         # Nome da empresa e CNPJ alinhados à direita no rodapé (largura da página - margem direita)
         texto_cnpj_empresa = f"Resolve Prestadora de Serviços | CNPJ: 52.823.975/0001-13"
-        canvas.drawRightString(A4[0] - doc.rightMargin, 15*mm, texto_cnpj_empresa)
+        # CORRIGIDO: Acessando largura via doc.pagesize
+        canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, 15*mm, texto_cnpj_empresa)
 
         # Opcional: Número da página no rodapé (útil para documentos com mais de 1 página)
-        # canvas.drawCentredString(A4[0]/2, 10*mm, f"Página {doc.page}")
+        # canvas.drawCentredString(doc.pagesize[0]/2, 10*mm, f"Página {doc.page}")
 
         canvas.restoreState() # Restaura o estado do canvas para não afetar o conteúdo da Story
 
@@ -230,7 +235,10 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
     tabela_numero_data = Table([
         ['', Paragraph(f"Orçamento nº {numero}", estilos['CorpoTextoPDF'])], # Número
         ['', Paragraph(f"Data: {data_formatada}", estilos['CorpoTextoPDF'])] # Data
-    ], colWidths=[doc.pageWidth - doc.leftMargin - doc.rightMargin - 60*mm, 60*mm]) # Coluna da direita fixa para número/data
+    ],
+    # CORRIGIDO: Acessando largura via doc.pagesize
+    colWidths=[doc.pagesize[0] - doc.leftMargin - doc.rightMargin - 60*mm, 60*mm] # Coluna da direita fixa para número/data
+    )
 
     tabela_numero_data.setStyle(TableStyle([
         ('ALIGN', (1,0), (1,-1), 'RIGHT'), # Alinha a 2ª coluna (onde estão número e data) à direita
@@ -303,7 +311,10 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
      # Esta tabela ocupa 100% da largura disponível entre as margens
     tabela_valor = Table([
         [Paragraph("TOTAL:", estilos['TotalLabelPDF']), Paragraph(f"R$ {valor}", estilos['TotalValorPDF'])]
-    ], colWidths=[doc.pageWidth - doc.leftMargin - doc.rightMargin - 80*mm, 80*mm]) # Coluna do valor fixa em 80mm, a do TOTAL preenche o resto
+    ],
+    # CORRIGIDO: Acessando largura via doc.pagesize
+    colWidths=[doc.pagesize[0] - doc.leftMargin - doc.rightMargin - 80*mm, 80*mm] # Coluna do valor fixa em 80mm, a do TOTAL preenche o resto
+    )
 
     tabela_valor.setStyle(TableStyle([
         ('ALIGN', (0,0), (0,0), 'LEFT'), # Alinha TOTAL à esquerda
@@ -319,8 +330,13 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
     ]))
     Story.append(tabela_valor)
 
+
     # Espaço final antes do rodapé fixo (pode ser necessário ajustar se o conteúdo for longo)
-    Story.append(Spacer(1, 10*mm))
+    # Adiciona um Spacer "flexível" que tenta preencher o espaço restante
+    # Story.append(Spacer(1, 1, 1, 1)) # Este Spacer flexível tenta empurrar o rodapé para baixo, mas com onFirstPage o rodapé é fixo.
+    # Com o onFirstPage, o rodapé já tem sua posição Y definida, então não precisamos de um Spacer flexível no final da Story.
+    # Apenas um Spacer normal para garantir um espaço mínimo entre o último elemento da Story e o rodapé.
+    Story.append(Spacer(1, 20*mm))
 
 
     # --- Construir o Documento ---
