@@ -1,10 +1,12 @@
 import streamlit as st
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable # Importar componentes para layout
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle # Para estilos de texto
-from reportlab.lib.units import mm # Para usar milímetros nas medidas
-from reportlab.lib.colors import HexColor, black, blue # Para cores, incluindo HexColor
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor, black, blue
 from io import BytesIO
-from datetime import date # Para usar a data
+from datetime import date
+# >>> ADICIONE ESTA LINHA <<<
+from reportlab.lib.pagesizes import A4
 
 # --- INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
 # Inicializa o número do orçamento e a data
