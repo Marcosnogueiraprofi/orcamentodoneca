@@ -1,17 +1,18 @@
 import streamlit as st
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.colors import HexColor
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable # Importar componentes para layout
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle # Para estilos de texto
+from reportlab.lib.units import mm # Para usar milímetros nas medidas
+from reportlab.lib.colors import HexColor, black, blue # Para cores, incluindo HexColor
 from io import BytesIO
-from datetime import date # Para usar a data atual ou do input
+from datetime import date # Para usar a data
 
 # --- INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
-# Inicializa o número do orçamento e a data (opcionalmente)
+# Inicializa o número do orçamento e a data
 if 'numero_orcamento' not in st.session_state:
-    st.session['numero_orcamento'] = 201 # Começa com o número que você quiser
+    st.session_state['numero_orcamento'] = 201 # Começa com o número que você quiser
 if 'data_orcamento' not in st.session_state:
      st.session_state['data_orcamento'] = date.today() # Data inicial
+
 
 # --- CÓDIGO CSS PARA LAYOUT AZUL E BRANCO ELEGANTE NO STREAMLIT ---
 # Este bloco injeta CSS na página do Streamlit para estilizar a interface
@@ -91,115 +92,233 @@ div[data-testid="stDateInput"] input:focus { /* Adicionado seletor para o input 
 # --- FIM DO CÓDIGO CSS ---
 
 
-# --- FUNÇÃO PARA CRIAR O PDF COM O LAYOUT MINIMALISTA ---
-def criar_pdf(numero, data, cliente, responsavel, endereco, descricao, valor, obs):
+# --- FUNÇÃO ATUALIZADA PARA CRIAR O PDF USANDO FLOWABLES ---
+# Esta função cria o PDF com um layout estruturado usando ReportLab Flowables
+def criar_pdf_flowables(numero, data, cliente, responsavel, endereco, descricao, valor, obs):
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    # O SimpleDocTemplate lida com margens, quebras de página, etc.
+    doc = SimpleDocTemplate(buffer,
+                            pagesize=A4,
+                            leftMargin=30*mm,
+                            rightMargin=30*mm,
+                            topMargin=30*mm,
+                            bottomMargin=20*mm)
 
-    # --- Definindo as Cores para o PDF ---
+    Story = [] # Lista para armazenar os elementos (Flowables) do PDF
+
+    # --- Definindo Estilos e Cores para o PDF ---
+    estilos = getSampleStyleSheet() # Pega estilos de exemplo
+
+    # Definindo cores
     AZUL_MARINHO_PDF = HexColor('#1E3A8A')
     PRETO_PDF = HexColor('#000000')
+    CINZA_LINHA_PDF = HexColor('#CED4DA')
 
-    # --- Posições Y (do topo para baixo, aproximadamente) ---
-    Y_TITULO = 285 # Posição Y do topo para o título principal
-    Y_VALOR_TOTAL = 260 # Posição Y para o TOTAL e Valor
-    Y_SECAO_CLIENTE = 230 # Posição Y para o início das informações do cliente
-    Y_TITULO_DESCRICAO = 190 # Posição Y para o título da Descrição
-    Y_TEXTO_DESCRICAO_INICIO = 180 # Posição Y para o início do texto da Descrição
-    Y_TITULO_OBS = 100 # Posição Y para o título das Observações
-    Y_TEXTO_OBS_INICIO = 90 # Posição Y para o início do texto das Observações
-    Y_RODAPE = 15 # Posição Y para o rodapé
 
-    # --- Título Principal ---
-    c.setFillColor(AZUL_MARINHO_PDF)
-    c.setFont("Helvetica-Bold", 18) # Tamanho ajustado para 18 para ser maior
-    # Posiciona o centro do texto no centro da página (A4[0]/2) e na altura Y_TITULO
-    c.drawCentredString(A4[0]/2, Y_TITULO*mm, "Orçamento Resolve Prestadora de Serviço")
+    # Criando estilos personalizados
+    estilos.add(ParagraphStyle(name='TituloPrincipal',
+                               fontName='Helvetica-Bold',
+                               fontSize=18,
+                               leading=22, # Espaçamento entre linhas
+                               alignment=1, # 0=Left, 1=Center, 2=Right
+                               textColor=AZUL_MARINHO_PDF))
 
-    # --- Número e Data do Orçamento ---
-    c.setFillColor(PRETO_PDF) # Cor preta
-    c.setFont("Helvetica", 12) # Fonte menor (ajuste o tamanho se 12 não for o que você quer)
-    # Posiciona à direita do centro, abaixo do título principal
-    # Ajuste as posições X e Y para ficarem alinhados como você quer
-    c.drawString(A4[0]/2 + 10*mm, (Y_TITULO - 10)*mm, f"Orçamento nº {numero}") # Exemplo de posição
-    # Formata a data como dd/mm/aaaa
+    estilos.add(ParagraphStyle(name='SubtituloTopo',
+                               fontName='Helvetica',
+                               fontSize=12,
+                               leading=14,
+                               alignment=2, # Alinhado à direita para Número e Data
+                               textColor=PRETO_PDF))
+
+    estilos.add(ParagraphStyle(name='CabecalhoEmpresa',
+                               fontName='Helvetica',
+                               fontSize=12,
+                               leading=14,
+                               alignment=1, # Centralizado
+                               textColor=AZUL_MARINHO_PDF))
+
+    estilos.add(ParagraphStyle(name='Heading2PDF',
+                               fontName='Helvetica-Bold',
+                               fontSize=14,
+                               leading=16,
+                               spaceAfter=6, # Espaço depois do parágrafo
+                               textColor=AZUL_MARINHO_PDF)) # Títulos de seção em azul
+
+    estilos.add(ParagraphStyle(name='CorpoTexto',
+                               fontName='Helvetica',
+                               fontSize=12,
+                               leading=14,
+                               spaceAfter=6,
+                               textColor=PRETO_PDF)) # Texto normal em preto
+
+    estilos.add(ParagraphStyle(name='RotuloDados',
+                               fontName='Helvetica-Bold',
+                               fontSize=12,
+                               leading=14,
+                               textColor=AZUL_MARINHO_PDF)) # Rótulos (Cliente, A/C, Imóvel) em negrito azul
+
+     # Estilo para o valor total (azul marinho, sem negrito, maior que texto normal)
+    estilos.add(ParagraphStyle(name='ValorTotal',
+                               fontName='Helvetica',
+                               fontSize=16,
+                               leading=18,
+                               alignment=1, # Centralizado
+                               spaceBefore=6,
+                               spaceAfter=12,
+                               textColor=AZUL_MARINHO_PDF))
+
+
+    estilos.add(ParagraphStyle(name='Rodape',
+                               fontName='Helvetica',
+                               fontSize=9,
+                               leading=11,
+                               alignment=0, # Alinhado à esquerda
+                               textColor=PRETO_PDF))
+
+
+    # --- Adicionando Elementos à "Story" (aqui construímos o layout) ---
+
+    # Título Principal
+    Story.append(Paragraph("Orçamento Resolve Prestadora de Serviço", estilos['TituloPrincipal']))
+
+    # Espaço
+    Story.append(Spacer(1, 5*mm))
+
+    # Número e Data (usando Tabela para alinhar à direita)
     data_formatada = data.strftime("%d/%m/%Y")
-    c.drawString(A4[0]/2 + 10*mm, (Y_TITULO - 15)*mm, f"Data: {data_formatada}") # Exemplo de posição
+    # Tabela 1 linha, 2 colunas. Largura [flexível, largura fixa]. Conteúdo justificado à direita na 2ª coluna.
+    tabela_numero_data = Table([
+        ['', f"Orçamento nº {numero}<br/>Data: {data_formatada}"] # <br/> força quebra de linha dentro da célula
+    ], colWidths=[A4[0]/2 - 30*mm, A4[0]/2 - 30*mm]) # Divide a largura disponível em 2 colunas
 
+    tabela_numero_data.setStyle(TableStyle([
+        ('ALIGN', (1,0), (1,0), 'RIGHT'), # Alinha a 2ª coluna à direita
+        ('VALIGN', (0,0), (1,0), 'TOP'), # Alinha no topo
+        ('LEFTPADDING', (0,0), (-1,-1), 0), # Remove padding padrão
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    Story.append(tabela_numero_data)
+
+
+    # Espaço
+    Story.append(Spacer(1, 8*mm))
+
+    # Linha Separadora Horizontal
+    Story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
     # --- Seção TOTAL e Valor Total ---
-    c.setFillColor(AZUL_MARINHO_PDF) # Cor azul marinho
-    c.setFont("Helvetica", 14) # Fonte sem negrito, talvez um pouco maior que o texto normal
-    # Posiciona TOTAL: centralizado, um pouco abaixo do cabeçalho
-    c.drawCentredString(A4[0]/2, Y_VALOR_TOTAL*mm, "TOTAL:")
+    # Usando Tabela para alinhar "TOTAL:" e Valor
+    tabela_valor = Table([
+        ['TOTAL:', f"R$ {valor}"]
+    ], colWidths=[A4[0]/2 - 30*mm, A4[0]/2 - 30*mm]) # Tabela com 2 colunas
 
-    c.setFillColor(AZUL_MARINHO_PDF) # Mesma cor
-    c.setFont("Helvetica", 16) # Valor um pouco maior
-    # Posiciona o valor centralizado, logo abaixo de TOTAL:
-    c.drawCentredString(A4[0]/2, (Y_VALOR_TOTAL - 8)*mm, f"R$ {valor}")
+    tabela_valor.setStyle(TableStyle([
+        ('ALIGN', (0,0), (0,0), 'LEFT'), # Alinha "TOTAL:" à esquerda na 1ª coluna
+        ('ALIGN', (1,0), (1,0), 'RIGHT'), # Alinha o valor à direita na 2ª coluna
+        ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'), # Negrito para TOTAL:
+        ('FONTSIZE', (0,0), (0,0), 14), # Tamanho ajustado
+        ('FONTSIZE', (1,0), (1,0), 16), # Tamanho ajustado para o valor
+         ('TEXTCOLOR', (0,0), (-1,0), AZUL_MARINHO_PDF), # Cor azul para TOTAL e Valor
+         ('LEFTPADDING', (0,0), (-1,-1), 0),
+         ('RIGHTPADDING', (0,0), (-1,-1), 0),
+         ('TOPPADDING', (0,0), (-1,-1), 0),
+         ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    # Removi o estilo 'ValorTotal' de ParagraphStyle e usei TableStyle para estilizar dentro da tabela
+    Story.append(tabela_valor)
+
+    # Espaço
+    Story.append(Spacer(1, 8*mm))
+
+    # Linha Separadora Horizontal
+    Story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
-    # --- Informações do Cliente/Imóvel (Adaptado dos seus inputs) ---
-    # Desenhando as linhas baseadas nos inputs separados do Streamlit
-    altura_linha_atual = Y_SECAO_CLIENTE # Começa nesta posição Y
+    # --- Informações do Cliente/Imóvel ---
+    # Usando Tabela para organizar Cliente, A/C, Imóvel como rótulo + valor
+    # Rótulo em azul negrito, valor em preto normal
+    tabela_cliente_imovel = Table([
+        [Paragraph("Cliente:", estilos['RotuloDados']), Paragraph(cliente, estilos['CorpoTexto'])],
+        [Paragraph("Local/Condomínio:", estilos['RotuloDados']), Paragraph(endereco, estilos['CorpoTexto'])],
+        [Paragraph("A/C:", estilos['RotuloDados']), Paragraph(responsavel, estilos['CorpoTexto'])],
+    ], colWidths=[40*mm, None]) # Coluna do rótulo com 40mm, a outra flexível
 
-    c.setFillColor(PRETO_PDF) # Cor preta para este bloco
-    c.setFont("Helvetica", 12) # Fonte normal
+    tabela_cliente_imovel.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), # Alinha no topo
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 2), # Pequeno padding no topo para espaçar linhas
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2), # Pequeno padding na base
+    ]))
+    Story.append(tabela_cliente_imovel)
 
-    # Desenha cada linha alinhada à esquerda
-    c.drawString(30*mm, altura_linha_atual*mm, f"À {cliente}")
-    altura_linha_atual -= 7 # Reduz a altura para a próxima linha
+    # Espaço
+    Story.append(Spacer(1, 8*mm))
 
-    # Assumindo que 'endereco' é o nome do condomínio/local
-    c.drawString(30*mm, altura_linha_atual*mm, f"{endereco}")
-    altura_linha_atual -= 7
-
-    c.drawString(30*mm, altura_linha_atual*mm, f"A/C de {responsavel}")
-    altura_linha_atual -= 15 # Espaço maior antes da descrição
+    # Linha Separadora Horizontal
+    Story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
     # --- Seção de Descrição ---
-    c.setFillColor(AZUL_MARINHO_PDF) # Cor azul marinho para o título da descrição
-    c.setFont("Helvetica-Bold", 14) # Título em negrito
-    c.drawCentredString(A4[0]/2, Y_TITULO_DESCRICAO*mm, "Descrição dos Serviços")
+    # Título da seção centralizado
+    Story.append(Paragraph("Descrição dos Serviços", estilos['Heading2PDF']))
+
+    # Texto da Descrição (Paragraph lida com quebra automática)
+    Story.append(Paragraph(descricao.replace('\n', '<br/>'), estilos['CorpoTexto'])) # Substitui \n por <br/> para ReportLab quebrar linha
+
+    # Espaço
+    Story.append(Spacer(1, 8*mm))
+
+    # Linha Separadora Horizontal
+    Story.append(HRFlowable(width="100%", thickness=0.5, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
-    c.setFillColor(PRETO_PDF) # Cor preta para o texto da descrição
-    c.setFont("Helvetica", 12) # Fonte normal
-    # --- ATENÇÃO: Lidar com texto longo/quebra de linha automaticamente é complexo com canvas! ---
-    # O código abaixo desenha cada linha do text_area separadamente.
-    # Se o texto não tiver quebras de linha manuais no text_area mas for muito longo, ele vai ultrapassar a borda.
-    # Se precisar quebra automática real, pesquise sobre 'ReportLab Flowables' (Paragraph).
-    altura_texto_desc = Y_TEXTO_DESCRICAO_INICIO # Posição Y inicial para o texto da descrição
-    linhas_desc = descricao.split('\n') # Quebra o texto do text_area em linhas
+    # --- Seção de Observações (Reintroduzida) ---
+    # Título da seção centralizado
+    Story.append(Paragraph("Observações", estilos['Heading2PDF']))
 
-    for linha in linhas_desc:
-         # Ajusta o espaçamento entre linhas. 5mm é um exemplo, ajuste se parecer muito junto/separado.
-         c.drawString(30*mm, altura_texto_desc*mm, linha) # Desenha a linha alinhada à esquerda
-         altura_texto_desc -= 5
+    # Texto das Observações (Paragraph lida com quebra automática)
+    Story.append(Paragraph(obs.replace('\n', '<br/>'), estilos['CorpoTexto'])) # Substitui \n por <br/> para ReportLab quebrar linha
+
+    # Espaço
+    Story.append(Spacer(1, 15*mm)) # Espaço maior antes do rodapé
 
 
-    # --- Rodapé no PDF ---
-    c.setFillColor(PRETO_PDF) # Cor preta para o rodapé
-    c.setFont("Helvetica", 9) # Fonte pequena
+    # --- Rodapé ---
+    # Usando Tabela para organizar Nome/CNPJ e alinhá-los à esquerda
+    tabela_rodape = Table([
+        ["Resolve Prestadora de Serviços"],
+        ["CNPJ: 52.823.975/0001-13"]
+    ], colWidths=[None]) # Coluna única flexível
 
-    # Desenha as linhas do rodapé alinhadas à esquerda
-    c.drawString(30*mm, Y_RODAPE*mm + 5*mm, "Resolve Prestadora de Serviços") # Exemplo de posição
-    c.drawString(30*mm, Y_RODAPE*mm, "CNPJ: 52.823.975/0001-13") # Exemplo de posição
+    tabela_rodape.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (0,0), 'Helvetica'),
+        ('FONTSIZE', (0,0), (0,0), 9),
+        ('FONTNAME', (0,1), (0,1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (0,1), 9),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'), # Alinha tudo à esquerda
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 1),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
+    ]))
+     # Adiciona o rodapé no final da "Story"
+    Story.append(tabela_rodape)
 
-    # Se quiser centralizado no rodapé:
-    # c.drawCentredString(A4[0]/2, Y_RODAPE*mm + 5*mm, "Resolve Prestadora de Serviços")
-    # c.drawCentredString(A4[0]/2, Y_RODAPE*mm, "CNPJ: 52.823.975/0001-13")
 
+    # --- Construir o Documento ---
+    try:
+        doc.build(Story) # Compila a história em um PDF
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        return pdf_bytes
+    except Exception as e:
+        st.error(f"Erro ao gerar o PDF: {e}")
+        buffer.close()
+        return None
 
-    # --- FECHAMENTO ---
-    c.showPage() # Finaliza a página atual
-    c.save() # Salva o conteúdo desenhado no buffer
-
-    pdf_bytes = buffer.getvalue()
-    buffer.close()
-
-    return pdf_bytes
 
 # --- INTERFACE STREAMLIT ---
 # Título principal do aplicativo Streamlit
@@ -216,72 +335,68 @@ col1, col2 = st.columns(2)
 # Campos na primeira coluna
 with col1:
     cliente = st.text_input("Cliente")
-    # Alterado para um campo de texto simples conforme o exemplo do PDF
-    # responsavel = st.text_input("A/C")
     responsavel = st.text_input("Responsável (A/C)")
 
 
 # Campos na segunda coluna
 with col2:
-     # Alterado para um campo de texto simples conforme o exemplo do PDF
-     # endereco = st.text_input("Imóvel") # Era 'Imóvel'
-     endereco = st.text_input("Local/Condomínio") # Mudei o rótulo para refletir o uso no PDF
+     endereco = st.text_input("Local/Condomínio")
      # Campo de data
      st.session_state.data_orcamento = st.date_input("Data do Orçamento", value=st.session_state.data_orcamento)
 
 
 # Campos que ocupam a largura total
-# A descrição agora é um único campo grande que pode incluir Cliente, A/C, Local e a descrição detalhada no PDF
-# Mas mantive os campos separados no Streamlit para facilitar a entrada de dados estruturados
-# e montei o texto no PDF com base nos inputs separados, como você descreveu no exemplo.
 descricao = st.text_area("Descrição Detalhada dos Serviços")
 valor = st.text_input("Valor Total do Orçamento")
-# removi o campo 'obs' do Streamlit interface para simplificar e focar no modelo descrito.
-# Se precisar dele de volta, é só descomentar e adicionar a lógica no PDF.
-# obs = st.text_input("Obs")
+obs = st.text_area("Observações") # Campo de observações reintroduzido
 
 
 # Botão para gerar o PDF
 if st.button("Gerar PDF"):
     # Verificar se os campos principais estão preenchidos antes de gerar
-    # Ajustei a verificação para os campos que estão na interface agora
-    if cliente and endereco and responsavel and descricao and valor:
-        # Chama a função para criar o PDF, passando os dados, incluindo o número e a data
-        # Passei os inputs individuais (cliente, endereco, responsavel) para a função criar_pdf
-        # para desenhá-los antes da Descrição Detalhada no PDF, como no seu exemplo.
-        pdf_bytes = criar_pdf(st.session_state.numero_orcamento,
-                              st.session_state.data_orcamento,
-                              cliente,
-                              responsavel,
-                              endereco, # Este é o Local/Condomínio agora
-                              descricao,
-                              valor,
-                              "") # Passei uma string vazia para 'obs' já que removemos o input por enquanto
+    # Ajustei a verificação para os campos presentes na interface agora
+    if cliente and endereco and responsavel and descricao and valor is not None and valor != "": # Verifica se valor não é vazio
+        # Chama a função para criar o PDF (agora usando Flowables)
+        # Passei os inputs individuais (cliente, endereco, responsavel) para a função
+        # Passei também o campo 'obs' que foi reintroduzido
+        pdf_bytes = criar_pdf_flowables(st.session_state.numero_orcamento,
+                                        st.session_state.data_orcamento,
+                                        cliente,
+                                        responsavel,
+                                        endereco,
+                                        descricao,
+                                        valor,
+                                        obs) # Passa o conteúdo do campo de observações
 
-        # Botão de download para o PDF gerado
-        st.download_button(
-            label="⬇️ Baixar Orçamento",
-            data=pdf_bytes,
-            # Nome do arquivo inclui o número e a data do orçamento para facilitar a organização
-            file_name=f"ORCAMENTO_RESOLVE_N{st.session_state.numero_orcamento}_{st.session_state.data_orcamento.strftime('%Y%m%d')}.pdf",
-            mime="application/pdf"
-        )
+        # Verifica se a geração do PDF foi bem sucedida antes de oferecer o download
+        if pdf_bytes:
+            # Botão de download para o PDF gerado
+            st.download_button(
+                label="⬇️ Baixar Orçamento",
+                data=pdf_bytes,
+                # Nome do arquivo inclui o número e a data do orçamento para facilitar a organização
+                file_name=f"ORCAMENTO_RESOLVE_N{st.session_state.numero_orcamento}_{st.session_state.data_orcamento.strftime('%Y%m%d')}.pdf",
+                mime="application/pdf"
+            )
 
-        # Mensagem de sucesso e feedback para o usuário
-        st.success(f"Orçamento Nº {st.session_state.numero_orcamento} gerado! Clique no botão para baixar.")
+            # Mensagem de sucesso e feedback para o usuário
+            st.success(f"Orçamento Nº {st.session_state.numero_orcamento} gerado! Clique no botão para baixar.")
 
-        # *** IMPORTANTE: Incrementa o número APÓS a geração bem-sucedida ***
-        # Isso garante que o próximo orçamento terá um número diferente
-        st.session_state.numero_orcamento += 1
+            # *** IMPORTANTE: Incrementa o número APÓS a geração bem-sucedida ***
+            # Isso garante que o próximo orçamento terá um número diferente
+            st.session_state.numero_orcamento += 1
 
-        # Opcional: Limpar os campos de input após gerar o PDF
-        # Para fazer isso, você precisaria armazenar os valores dos inputs no session_state também.
-        # Exemplo:
-        # st.session_state.cliente = ""
-        # st.experimental_rerun() # Força o Streamlit a recarregar e limpar
+            # Opcional: Limpar os campos de input após gerar o PDF (se quiser, descomente abaixo)
+            # Para fazer isso, você precisaria armazenar os valores dos inputs no session_state também.
+            # Exemplo:
+            # for key in ['cliente', 'responsavel', 'endereco', 'descricao', 'valor', 'obs']:
+            #     if key in st.session_state:
+            #         del st.session_state[key] # Limpa o valor do session_state
+            # st.rerun() # Força o Streamlit a recarregar e limpar os campos
+
 
     else:
         # Mensagem de aviso se campos obrigatórios não forem preenchidos
-        st.warning("Por favor, preencha todos os campos obrigatórios (Cliente, Local/Condomínio, Responsável, Descrição e Valor).")
+        st.warning("Por favor, preencha os campos obrigatórios (Cliente, Local/Condomínio, Responsável, Descrição e Valor).")
 
 # Fim do script
