@@ -1,132 +1,134 @@
+# Mantenha os imports no início do seu script
 import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor # Importar para usar cores hexadecimais
 from io import BytesIO
-# import os # Esta linha não parece ser usada no código, pode ser removida se não for necessária
+# import os # Manter ou remover conforme necessário no resto do script
 
-# --- INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
-# Inicializa o número do orçamento se ele ainda não existir no estado de sessão
+# Mantenha a inicialização do estado de sessão para o número do orçamento
 if 'numero_orcamento' not in st.session_state:
-    st.session_state.numero_orcamento = 201 # Começa com o número que você quiser
+    st.session_state.numero_orcamento = 201
 
-# --- INÍCIO DO CÓDIGO CSS PARA LAYOUT AZUL E BRANCO ELEGANTE ---
+# Mantenha o bloco de CSS para o layout do Streamlit
 st.markdown("""
-<style>
-/* Estilo para o corpo principal da página */
-.main {
-    background-color: #FFFFFF; /* Fundo branco puro */
-    color: #333; /* Cor de texto padrão suave */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Fonte mais elegante */
-    padding: 30px; /* Um pouco mais de espaço */
-}
-
-/* Estilo para o cabeçalho/título principal */
-.stApp > header {
-    background-color: #1E3A8A; /* Azul marinho para o cabeçalho do Streamlit */
-    padding: 10px;
-}
-
-/* Estilo para os títulos dentro do conteúdo (se usar st.title ou st.header) */
-h1, h2, h3, h4, h5, h6 {
-    color: #1E3A8A; /* Azul marinho para títulos */
-    font-weight: bold;
-}
-
-/* Estilo para os inputs de texto e text area */
-div[data-testid="textInputRootStyles"] label,
-div[data-testid="stTextarea"] label {
-    font-weight: bold;
-    color: #0056b3; /* Um azul médio para os rótulos */
-}
-
-div[data-testid="textInputRootStyles"] input,
-div[data-testid="stTextarea"] textarea {
-    background-color: #F8F9FA; /* Um branco bem levemente acinzentado */
-    border: 1px solid #CED4DA; /* Borda suave */
-    border-radius: 5px;
-    padding: 10px;
-    width: 100%; /* Ocupa a largura total disponível no contêiner */
-    box-sizing: border-box; /* Inclui padding e borda no cálculo da largura */
-}
-
-div[data-testid="textInputRootStyles"] input:focus,
-div[data-testid="stTextarea"] textarea:focus {
-    border-color: #007bff; /* Borda azul mais vibrante ao focar */
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Sombra suave ao focar */
-    outline: none; /* Remove o contorno padrão do navegador */
-}
-
-
-/* Estilo para o botão */
-.stButton button {
-    background-color: #007bff; /* Azul primário */
-    color: white; /* Texto branco */
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    transition: background-color 0.3s ease; /* Efeito suave ao passar o mouse */
-}
-
-.stButton button:hover {
-    background-color: #0056b3; /* Azul um pouco mais escuro ao passar o mouse */
-}
-
-/* Adicione mais estilos conforme necessário */
-
-</style>
+# ... (seu bloco de CSS para o Streamlit está aqui) ...
 """, unsafe_allow_html=True)
-# --- FIM DO CÓDIGO CSS ---
 
 
-# --- FUNÇÃO PARA CRIAR O PDF ---
-# A função agora recebe o número do orçamento
+# --- FUNÇÃO ATUALIZADA PARA CRIAR O PDF COM ESTILO ---
+# A função agora usa cores e desenha mais elementos
 def criar_pdf(numero, cliente, responsavel, endereco, descricao, valor, obs):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
 
-    # --- CONTEÚDO DO PDF ---
+    # --- Definindo as Cores ---
+    AZUL_ESCURO = HexColor('#1E3A8A') # O azul marinho que usamos no Streamlit
+    AZUL_PRIMARIO = HexColor('#007bff') # Um azul um pouco mais vibrante
+    CINZA_LINHA = HexColor('#CED4DA') # Um cinza claro para linhas
+
+
+    # --- Cabeçalho do Orçamento ---
+    c.setFillColor(AZUL_ESCURO) # Define a cor para o título
+    c.setFont("Helvetica-Bold", 18) # Fonte maior e negrito
+    c.drawString(30*mm, 285*mm, "ORÇAMENTO")
+
+    c.setFillColor(AZUL_ESCURO) # Mantém a cor
+    c.setFont("Helvetica", 12)
+    c.drawString(30*mm, 279*mm, "RESOLVE VISTORIAS") # Nome da empresa no cabeçalho
+
+    c.setFillColor(HexColor('#333333')) # Volta para um cinza escuro/preto para o número
     c.setFont("Helvetica-Bold", 16)
-    # Usa o número dinâmico do orçamento
-    c.drawString(30*mm, 280*mm, f"ORÇAMENTO Nº {numero}")
+    c.drawString(150*mm, 285*mm, f"Nº {numero}") # Posição do número, ajuste se necessário
 
-    c.setFont("Helvetica", 12)
-    c.drawString(30*mm, 270*mm, f"À {cliente}")
-    c.drawString(30*mm, 260*mm, f"A/C {responsavel}")
-    c.drawString(30*mm, 250*mm, f"Imóvel: {endereco}")
 
-    # --- ADICIONANDO A DESCRIÇÃO, VALOR E OBS (ajuste as posições) ---
-    # As posições (números antes do *mm) são exemplos. Ajuste para o seu layout.
-    altura_inicial_desc = 220 # Posição Y inicial para a descrição
+    # --- Linha separadora abaixo do cabeçalho ---
+    c.setStrokeColor(CINZA_LINHA) # Define a cor da linha
+    c.setLineWidth(0.5) # Espessura da linha
+    c.line(30*mm, 275*mm, 180*mm, 275*mm) # Desenha uma linha horizontal (início_x, início_y, fim_x, fim_y)
 
+
+    # --- Dados do Cliente/Imóvel ---
+    altura_cliente = 265 # Posição Y inicial
+
+    c.setFillColor(AZUL_PRIMARIO) # Cor para os rótulos
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(30*mm, altura_inicial_desc*mm, "Descrição do Serviço:")
+    c.drawString(30*mm, altura_cliente*mm, "Cliente:")
+    c.drawString(30*mm, (altura_cliente - 10)*mm, "A/C:")
+    c.drawString(30*mm, (altura_cliente - 20)*mm, "Imóvel:")
+
+    c.setFillColor(HexColor('#333333')) # Cor para os dados
     c.setFont("Helvetica", 12)
-    # Para texto longo, você precisa de lógica para quebrar linhas ou usar outros elementos do ReportLab
-    # Exemplo MUITO SIMPLES: apenas a primeira linha da descrição se houver quebras
-    descricao_formatada = descricao.split('\n')[0] if '\n' in descricao else descricao
-    c.drawString(30*mm, (altura_inicial_desc - 10)*mm, descricao_formatada)
+    c.drawString(60*mm, altura_cliente*mm, cliente) # Posição para o nome do cliente
+    c.drawString(60*mm, (altura_cliente - 10)*mm, responsavel) # Posição para o responsável
+    c.drawString(60*mm, (altura_cliente - 20)*mm, endereco) # Posição para o endereço
 
 
-    altura_valor_obs = 150 # Posição Y para Valor
+    # --- Linha separadora ---
+    c.setStrokeColor(CINZA_LINHA)
+    c.line(30*mm, (altura_cliente - 25)*mm, 180*mm, (altura_cliente - 25)*mm)
+
+
+    # --- Descrição do Serviço ---
+    altura_desc = (altura_cliente - 35) # Posição Y inicial para descrição
+
+    c.setFillColor(AZUL_PRIMARIO)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(30*mm, altura_valor_obs*mm, "Valor Total:")
-    c.setFont("Helvetica", 12)
-    c.drawString(60*mm, altura_valor_obs*mm, f"R$ {valor}")
+    c.drawString(30*mm, altura_desc*mm, "Descrição do Serviço:")
 
-    altura_obs = 130 # Posição Y para Observações
+    c.setFillColor(HexColor('#333333'))
+    c.setFont("Helvetica", 12)
+    # --- ATENÇÃO: Lidar com texto longo/quebra de linha no PDF é complexo com canvas ---
+    # Para um layout mais elegante com texto quebrado, você precisaria de Flowables.
+    # Abaixo, um exemplo MUITO SIMPLES que só pega a primeira linha ou a string inteira se for curta:
+    descricao_curta = descricao.split('\n')[0] if len(descricao.split('\n')[0]) > 100 else descricao
+    c.drawString(30*mm, (altura_desc - 10)*mm, descricao_curta)
+    # Se precisar de quebra de linha real e múltiplos parágrafos, me avise para explorarmos Flowables!
+
+
+    # --- Linha separadora ---
+    c.setStrokeColor(CINZA_LINHA)
+    c.line(30*mm, (altura_desc - 20)*mm, 180*mm, (altura_desc - 20)*mm)
+
+
+    # --- Valor e Observações ---
+    altura_valor_obs_block = (altura_desc - 30) # Posição Y inicial para este bloco
+
+    c.setFillColor(AZUL_PRIMARIO)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(30*mm, altura_obs*mm, "Observações:")
+    c.drawString(30*mm, altura_valor_obs_block*mm, "Valor Total:")
+
+    c.setFillColor(HexColor('#333333'))
     c.setFont("Helvetica", 12)
-    # Exemplo MUITO SIMPLES: apenas a primeira linha das obs se houver quebras
-    obs_formatada = obs.split('\n')[0] if '\n' in obs else obs
-    c.drawString(30*mm, (altura_obs - 10)*mm, obs_formatada)
+    c.drawString(60*mm, altura_valor_obs_block*mm, f"R$ {valor}")
 
 
-    # --- FECHAMENTO CORRETO ---
+    altura_obs_label = (altura_valor_obs_block - 20)
+    c.setFillColor(AZUL_PRIMARIO)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(30*mm, altura_obs_label*mm, "Observações:")
+
+    c.setFillColor(HexColor('#333333'))
+    c.setFont("Helvetica", 12)
+     # --- ATENÇÃO: Lidar com texto longo/quebra de linha no PDF é complexo com canvas ---
+    # Exemplo MUITO SIMPLES:
+    obs_curta = obs.split('\n')[0] if len(obs.split('\n')[0]) > 100 else obs
+    c.drawString(30*mm, (altura_obs_label - 10)*mm, obs_curta)
+    # Se precisar de quebra de linha real e múltiplos parágrafos, me avise!
+
+
+    # --- Linha separadora final antes do rodapé ---
+    c.setStrokeColor(CINZA_LINHA)
+    c.line(30*mm, (altura_obs_label - 20)*mm, 180*mm, (altura_obs_label - 20)*mm)
+
+    # --- Rodapé (Exemplo: Nome da empresa) ---
+    c.setFillColor(AZUL_ESCURO)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(A4[0]/2, 15*mm, "Resolve Vistorias") # Centralizado na parte inferior
+
+
+    # --- FECHAMENTO ---
     c.showPage()
     c.save()
 
@@ -135,8 +137,9 @@ def criar_pdf(numero, cliente, responsavel, endereco, descricao, valor, obs):
 
     return pdf_bytes
 
-# --- INTERFACE STREAMLIT ---
-st.title("Gerador de Orçamento - Resolve Vistorias") # Título usando Streamlit para ser estilizado pelo CSS
+# --- INTERFACE STREAMLIT (MANTENHA ESTA PARTE) ---
+# ... (seus st.title, st.columns, st.text_input, st.button, e a lógica do botão) ...
+st.title("Gerador de Orçamento - Resolve Vistorias") # Título usando Streamlit
 
 # Exemplo de layout com colunas para organizar campos
 col1, col2 = st.columns(2)
@@ -147,7 +150,7 @@ with col1:
 
 with col2:
     endereco = st.text_input("Imóvel")
-    # Você pode adicionar outros campos aqui se quiser
+
 
 descricao = st.text_area("Descrição")
 valor = st.text_input("Valor")
