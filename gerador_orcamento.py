@@ -4,11 +4,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle # Para estilos de texto
 from reportlab.lib.units import mm # Para usar milímetros nas medidas
 from reportlab.lib.colors import HexColor, black, blue # Para cores
-from reportlab.lib.pagesizes import A4 # Para o tamanho da página A4 (CORRIGIDO: Importado novamente)
+from reportlab.lib.pagesizes import A4 # Para o tamanho da página A4
 from io import BytesIO
 from datetime import date # Para usar a data
-# Removido import de pdfmetrics e ttfonts
-
 
 # --- INICIALIZAÇÃO DO ESTADO DE SESSÃO ---
 # Inicializa o número do orçamento, a data e as informações de contato
@@ -104,8 +102,8 @@ div[data-testid="stDateInput"] input:focus {
 # --- FIM DO CÓDIGO CSS ---
 
 
-# --- FUNÇÃO PARA CRIAR O PDF COM LAYOUT SOFISTICADO (FLOWABLES, FONTES PADRÃO) ---
-def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descricao, valor, obs, contato_telefone, contato_email, contato_site):
+# --- FUNÇÃO PARA CRIAR O PDF COM LAYOUT SOFISTICADO (FLOWABLES BASEADO EM TABELAS) ---
+def criar_pdf_sofisticado_tabela(numero, data, cliente, responsavel, endereco, descricao, valor, obs, contato_telefone, contato_email, contato_site):
     buffer = BytesIO()
     # SimpleDocTemplate para gerenciamento do documento, com margens para header/footer
     doc = SimpleDocTemplate(buffer,
@@ -258,7 +256,7 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
     Story.append(HRFlowable(width="100%", thickness=0.25, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
-    # --- Seção de Dados do Cliente/Imóvel ---
+    # --- Seção de Dados do Cliente/Imóvel (Usando Tabela) ---
     # Tabela para organizar Rótulo | Valor
     tabela_cliente_imovel = Table([
         [Paragraph("Cliente:", estilos['RotuloDadosPDF']), Paragraph(cliente, estilos['ValorDadosPDF'])],
@@ -272,6 +270,9 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
         ('RIGHTPADDING', (0,0), (-1,-1), 0),
         ('TOPPADDING', (0,0), (-1,-1), 3), # Pequeno padding no topo para espaçar linhas
         ('BOTTOMPADDING', (0,0), (-1,-1), 3), # Pequeno padding na base
+        # Opcional: Adicionar bordas ou fundo aqui se quiser destacar este bloco
+        # ('BOX', (0,0), (-1,-1), 0.5, CINZA_LINHA_PDF),
+        # ('BACKGROUND', (0,0), (-1,-1), HexColor('#F8F9FA')),
     ]))
     Story.append(tabela_cliente_imovel)
 
@@ -282,12 +283,24 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
     Story.append(HRFlowable(width="100%", thickness=0.25, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
-    # --- Seção de Descrição ---
-    Story.append(Paragraph("Descrição dos Serviços", estilos['Heading1PDF'])) # Título da seção
+    # --- Seção de Descrição (Usando Tabela) ---
+    # Tabela com 1 linha e 1 coluna para conter o título e o texto da descrição
+    tabela_descricao = Table([
+        [Paragraph("Descrição dos Serviços", estilos['Heading1PDF'])], # Título da seção
+        [Paragraph(descricao.replace('\n', '<br/>'), estilos['CorpoTextoPDF'])] # Texto da Descrição
+    ], colWidths=[None]) # Coluna única que preenche a largura
 
-    # Texto da Descrição (Paragraph lida com quebra automática e \n usando <br/>)
-    # .replace('\n', '<br/>') converte quebras de linha digitadas em quebras de linha no PDF
-    Story.append(Paragraph(descricao.replace('\n', '<br/>'), estilos['CorpoTextoPDF']))
+    tabela_descricao.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+         # Opcional: Adicionar bordas ou fundo aqui se quiser destacar este bloco
+        # ('BOX', (0,0), (-1,-1), 0.5, CINZA_LINHA_PDF),
+        # ('BACKGROUND', (0,0), (-1,-1), HexColor('#F8F9FA')),
+    ]))
+    Story.append(tabela_descricao)
 
     # Espaço
     Story.append(Spacer(1, 15*mm))
@@ -296,17 +309,30 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
     Story.append(HRFlowable(width="100%", thickness=0.25, lineCap='round', color=CINZA_LINHA_PDF, spaceBefore=6, spaceAfter=12))
 
 
-    # --- Seção de Observações ---
-    Story.append(Paragraph("Observações", estilos['Heading1PDF'])) # Título da seção
+    # --- Seção de Observações (Usando Tabela) ---
+     # Tabela com 1 linha e 1 coluna para conter o título e o texto das observações
+    tabela_obs = Table([
+        [Paragraph("Observações", estilos['Heading1PDF'])], # Título da seção
+        [Paragraph(obs.replace('\n', '<br/>'), estilos['CorpoTextoPDF'])] # Texto das Observações
+    ], colWidths=[None]) # Coluna única que preenche a largura
 
-    # Texto das Observações (Paragraph lida com quebra automática e \n usando <br/>)
-    Story.append(Paragraph(obs.replace('\n', '<br/>'), estilos['CorpoTextoPDF']))
+    tabela_obs.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+         # Opcional: Adicionar bordas ou fundo aqui se quiser destacar este bloco
+        # ('BOX', (0,0), (-1,-1), 0.5, CINZA_LINHA_PDF),
+        # ('BACKGROUND', (0,0), (-1,-1), HexColor('#F8F9FA')),
+    ]))
+    Story.append(tabela_obs)
 
     # Espaço
     Story.append(Spacer(1, 20*mm)) # Espaço maior antes da seção TOTAL/Valor
 
 
-     # --- Seção Valor Total (Destacada) ---
+     # --- Seção Valor Total (Destacada Usando Tabela) ---
      # Usando Tabela para posicionar TOTAL e Valor na mesma linha, alinhados
      # Esta tabela ocupa 100% da largura disponível entre as margens
     tabela_valor = Table([
@@ -332,11 +358,8 @@ def criar_pdf_sofisticado(numero, data, cliente, responsavel, endereco, descrica
 
 
     # Espaço final antes do rodapé fixo (pode ser necessário ajustar se o conteúdo for longo)
-    # Adiciona um Spacer "flexível" que tenta preencher o espaço restante
-    # Story.append(Spacer(1, 1, 1, 1)) # Este Spacer flexível tenta empurrar o rodapé para baixo, mas com onFirstPage o rodapé é fixo.
-    # Com o onFirstPage, o rodapé já tem sua posição Y definida, então não precisamos de um Spacer flexível no final da Story.
-    # Apenas um Spacer normal para garantir um espaço mínimo entre o último elemento da Story e o rodapé.
-    Story.append(Spacer(1, 20*mm))
+    # Adiciona um Spacer para garantir um espaço mínimo entre o último elemento da Story e o rodapé fixo.
+    Story.append(Spacer(1, 20*mm)) # Exemplo de espaço final
 
 
     # --- Construir o Documento ---
@@ -395,9 +418,9 @@ obs = st.text_area("Observações", height=100) # Campo de observações reintro
 if st.button("Gerar PDF"):
     # Verificar se os campos principais estão preenchidos antes de gerar
     if cliente and endereco and responsavel and descricao and valor is not None and valor != "": # Verifica se valor não é vazio
-        # Chama a função para criar o PDF (usando Flowables com fontes padrão)
+        # Chama a função para criar o PDF (agora usando Flowables com layout de tabela)
         # Passa todos os dados, incluindo as informações de contato da empresa
-        pdf_bytes = criar_pdf_sofisticado(st.session_state.numero_orcamento,
+        pdf_bytes = criar_pdf_sofisticado_tabela(st.session_state.numero_orcamento,
                                         st.session_state.data_orcamento,
                                         cliente,
                                         responsavel,
